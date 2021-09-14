@@ -47,21 +47,7 @@ BEGIN
 	GROUP BY	Q.TypeID ;
 END$$
 DELIMITER ;
-CALL		TypeQuestion_Month(9);
-
--- EXAMPLE 
-
-SET GLOBAL LOG_BIN_TRUST_FUNTION_CREATORS = 1 ;
-DROP FUNCTION IF EXISTS TINH_TONG;
-DELIMITER $$
-CREATE FUNCTION TINH_TONG (NUMBER1 TINYINT , NUMBER2 TINYINT) RETURNS TINYINT
-	BEGIN
-			DECLARE TONG TINYINT;
-            SET 	TONG = NUMBER1 + NUMBER2;
-            RETURN 	TONG;
-	END$$
-    DELIMITER ;
-    SELECT TINHTONG (1,3);
+CALL		TypeQuestion_Month(now());
 
 
 -- Question 3: Tạo store để thống kê mỗi type question
@@ -77,7 +63,7 @@ BEGIN
 END$$
 DELIMITER ;
 
-call testingsystem.sp_typeQuestionOfMonth(9);
+call QuestionOfMonth();
 
 
 -- Question 4: Tạo store để trả ra id của type question có nhiều câu hỏi nhất
@@ -87,40 +73,67 @@ DELIMITER $$
 CREATE PROCEDURE TypeID_QuestionMax()
 BEGIN
 	WITH MAX_Count_TypeID AS(
-		SELECT		COUNT(TypeID)
-		FROM		Question 
-		GROUP BY	TypeID
-        ORDER BY	COUNT(TypeID) DESC
-		LIMIT 		1)
+								SELECT		COUNT(TypeID)
+								FROM		Question 
+								GROUP BY	TypeID
+								ORDER BY	COUNT(TypeID) DESC
+								LIMIT 		1)
    
    SELECT 		TypeID
     FROM		Question
     GROUP BY 	TypeID
     HAVING		COUNT(TypeID) = (SELECT * FROM MAX_Count_TypeID);	
+
 END$$
 DELIMITER ;
+set @out_id_typequestion = 0;
+call  TypeID_QuestionMax(@out_id_typequestion);
+select @out_id_typequestion;
+call  TypeID_QuestionMax();
 
-call sp_TypeID_MaxQuestion();
+    -- bài 4 , đã sửa
+DROP PROCEDURE IF EXISTS get_typequestion;
+DELIMITER $$
+CREATE PROCEDURE get_typequestion(OUT out_id_typequestion TINYINT UNSIGNED)
+ BEGIN
+ WITH
+ Count_TypeID AS (
+ SELECT TypeID, count(TypeID) 'num'
+ FROM question 
+            GROUP BY TypeID)
+ SELECT TypeID INTO out_id_typequestion
+ FROM question
+ GROUP BY TypeID
+        HAVING count(TypeID) = (SELECT max(num)
+  FROM  Count_TypeID)
+ Limit 1;
+    END $$
+DELIMITER ;
+set @out_id_typequestion = 0;
+call get_typequestion(@out_id_typequestion);
+select @out_id_typequestion;
+    
 
 -- Question 5: Sử dụng store ở question 4 để tìm ra tên của type question
+-- Cách 1
+SET 		@out_id_5 = 0 ;
+CALL 		get_typequestion(@out_id_5);
+SELECT		*
+FROM		TypeQuestion
+WHERE		TypeName = @out_id_5;
+
+-- cách 2 
 
 DROP PROCEDURE IF EXISTS Name_TypeQuestion;
 DELIMITER $$
-CREATE PROCEDURE Name_ByIDTypeQuestion()
+CREATE PROCEDURE  Name_TypeQuestion()
 BEGIN
-	WITH MAX_CountTypeID AS(
-		SELECT		COUNT(TypeID)
-		FROM		Question 
-		GROUP BY	TypeID
-        ORDER BY	COUNT(TypeID) DESC
-		LIMIT 		1    )
-        
-    SELECT 		TQ.TypeName
-    FROM		Question 		AS	Q 
-	INNER JOIN 	TypeQuestion 	AS	TQ	 ON Q.TypeID = TQ.TypeID
-    GROUP BY 	Q.TypeID
-    HAVING		COUNT(Q.TypeID) = (SELECT * FROM MAX_CountTypeID);		
-END$$
+		SET 		@out_id_5 = 0 ;
+        CALL 		get_typequestion(@out_id_5);
+		SELECT		*
+		FROM		TypeQuestion
+		WHERE		TypeName = @out_id_5;
+		END$$
 DELIMITER ;
 
 
